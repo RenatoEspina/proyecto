@@ -1,0 +1,122 @@
+@startuml
+' Diagrama de Casos de Uso de Alto Nivel - BeeTracer
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam usecase {
+  BackgroundColor #FDF6E3
+  BorderColor #B58900
+  ArrowColor #586E75
+}
+skinparam actor {
+  BackgroundColor #EEE8D5
+  BorderColor #586E75
+}
+skinparam nodesep 25
+skinparam ranksep 45
+
+actor "Administrador\ndel depósito" as ADM
+actor "Ejecutivo\ncomercial" as EJE
+actor "Jefe de faena" as JFA
+actor "Jefe tarjador" as JTA
+actor "Supervisor de\nreportes" as SUP
+actor "Cliente del depósito\n(importador)" as CLI
+
+actor "Servicio Nacional\nde Aduanas" as ADU <<externo>>
+actor "Sistema del cliente\n(API)" as API <<externo>>
+actor "Servidor de correo" as SMTP <<externo>>
+
+rectangle "BeeTracer" {
+
+  package "M1. Administrar maestros" as P1 {
+    usecase "CU-01 Gestionar usuarios,\nroles y permisos" as CU01
+    usecase "CU-02 Gestionar clientes" as CU02
+    usecase "CU-03 Gestionar trabajadores\ny cuadrillas" as CU03
+    usecase "CU-04 Gestionar tipos de bulto\ny parámetros" as CU04
+  }
+
+  package "M2. Ingesta de información de carga" as P2 {
+    usecase "CU-05 Importar manifiesto\nelectrónico (XML)" as CU05
+    usecase "CU-06 Recibir carga vía\nintegración API" as CU06
+    usecase "CU-07 Registrar carga en\nmodalidad tarja ciega" as CU07
+  }
+
+  package "M3. Programar faenas" as P3 {
+    usecase "CU-08 Programar faena\nde desconsolidado" as CU08
+    usecase "CU-09 Asignar cuadrilla\ny jefe tarjador" as CU09
+    usecase "CU-10 Consultar programación\n(móvil)" as CU10
+  }
+
+  package "M4. Ejecutar operaciones" as P4 {
+    usecase "CU-11 Registrar apertura\nde contenedor" as CU11
+    usecase "CU-12 Registrar desconsolidado\ny separación por cliente" as CU12
+    usecase "CU-13 Registrar incidencia" as CU13
+    usecase "CU-14 Registrar cierre\nde faena" as CU14
+    usecase "CU-15 Capturar y subir\nevidencia fotográfica" as CU15
+    usecase "CU-16 Sincronizar datos\n(modo offline)" as CU16
+  }
+
+  package "M5. Gestión de reportes" as P5 {
+    usecase "CU-17 Generar reporte PDF\nde la faena" as CU17
+    usecase "CU-18 Revisar y aprobar\nreporte" as CU18
+    usecase "CU-19 Solicitar recaptura\nde fotografía" as CU19
+  }
+
+  package "M6. Publicar y enviar" as P6 {
+    usecase "CU-20 Enviar reporte\nal cliente" as CU20
+    usecase "CU-21 Consultar faenas\nhistóricas y trazabilidad" as CU21
+  }
+}
+
+' --- Asociaciones actor / caso de uso ---
+ADM --> CU01
+ADM --> CU02
+ADM --> CU03
+ADM --> CU04
+EJE --> CU02
+
+JFA --> CU05
+JFA --> CU08
+JFA --> CU21
+ADU --> CU05
+API --> CU06
+
+JTA --> CU07
+JTA --> CU10
+JTA --> CU11
+JTA --> CU12
+JTA --> CU13
+JTA --> CU14
+
+SUP --> CU18
+SUP --> CU20
+CLI --> CU21
+CU20 --> SMTP
+
+' --- Relaciones entre casos de uso ---
+CU08 ..> CU09 : <<include>>
+CU11 ..> CU15 : <<include>>
+CU12 ..> CU15 : <<include>>
+CU13 ..> CU15 : <<include>>
+CU14 ..> CU15 : <<include>>
+CU15 ..> CU16 : <<extend>>
+CU13 ..> CU12 : <<extend>>
+CU14 ..> CU17 : <<include>>
+CU19 ..> CU18 : <<extend>>
+CU18 ..> CU20 : <<include>>
+
+' --- Apilado vertical de los paquetes para un diagrama más compacto ---
+P1 -[hidden]down- P2
+P2 -[hidden]down- P3
+P3 -[hidden]down- P4
+P4 -[hidden]down- P5
+P5 -[hidden]down- P6
+
+note as N1
+  <b>Nota:</b> el caso de uso <b>CU-22 Autenticar usuario</b>
+  es incluido (<<include>>) por todos los casos de uso
+  del sistema. Se omite del diagrama por legibilidad.
+end note
+
+@enduml

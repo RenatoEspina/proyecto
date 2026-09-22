@@ -1,0 +1,48 @@
+@startuml
+' Diagrama de Colaboración (Comunicación) - CU-12 Registrar desconsolidado
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam object {
+  BackgroundColor #FDF6E3
+  BorderColor #B58900
+}
+skinparam object<<actor>> {
+  BackgroundColor #E8EEF7
+  BorderColor #586E75
+}
+skinparam ArrowColor #586E75
+
+object "Jefe tarjador" as JTA <<actor>>
+object ":PantallaFaenaMovil" as PM
+object ":GestorFaena" as GF
+object "f:Faena" as FAE
+object "e:EtapaFaena" as ETA
+object "l:LineaCarga" as LIN
+object "i:Incidencia" as INC
+object "ft:Fotografia" as FOT
+object ":SincronizadorOffline" as SYNC
+object ":RepositorioFotos" as REP
+
+JTA --> PM : 1: registrarLote(idCliente, tipoBulto, cantidad)
+PM --> GF : 2: registrarLote(f, idCliente, tipoBulto, cantidad)
+GF --> FAE : 3: obtenerEtapaActiva()
+GF --> LIN : 4: contrastarCantidad(cantidad)
+GF --> INC : 5 [diferencia <> 0]: crear(tipo, cantidadAfectada)
+GF --> ETA : 6: agregarLote(l)
+JTA --> PM : 7: capturarFoto()
+PM --> GF : 8: registrarEvidencia(e, imagen)
+GF --> FOT : 9: crear(uuid, fechaHora, geo)
+FOT --> FOT : 10: comprimir()
+GF --> SYNC : 11: encolarSubida(ft)
+SYNC --> REP : 12 [hayConectividad]: subir(ft)
+REP --> SYNC : 13: urlAlmacenamiento
+SYNC --> FOT : 14: marcarSubida(url)
+GF --> PM : 15: loteRegistrado
+PM --> JTA : 16: mostrarConfirmacion()
+
+note bottom of SYNC
+  12' [no hayConectividad]: persistirLocal(ft)
+  12'': reintentar() al recuperar señal
+end note
+
+@enduml

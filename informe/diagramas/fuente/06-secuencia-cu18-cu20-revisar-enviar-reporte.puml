@@ -1,0 +1,102 @@
+@startuml
+' Diagrama de Secuencia - CU-17 / CU-18 / CU-19 / CU-20 Generar, revisar y enviar reporte
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #586E75
+  LifeLineBorderColor #93A1A1
+  ParticipantBorderColor #B58900
+  ParticipantBackgroundColor #FDF6E3
+  ActorBorderColor #586E75
+}
+autonumber
+
+actor "Supervisor de reportes" as SUP
+actor "Jefe tarjador" as JTA
+boundary "VistaRevisionReporte" as VW
+control "GestorReportes" as GR
+entity "Faena" as FAE
+entity "Reporte" as REP
+entity "Fotografia" as FOT
+entity "GeneradorPDF" as PDF
+entity "ServicioCorreo" as MAIL
+actor "Cliente del depósito" as CLI
+
+== CU-17 Generación automática del borrador ==
+FAE -> GR : faenaFinalizada(idFaena)
+activate GR
+GR -> REP : crear(folio, faena, version=1)
+activate REP
+REP --> GR : reporte
+deactivate REP
+GR -> FOT : obtenerPorFaena(idFaena)
+activate FOT
+FOT --> GR : listaFotografias
+deactivate FOT
+GR -> PDF : armarReporte(faena, lotesPorCliente, incidencias, fotografias)
+activate PDF
+PDF --> GR : archivoPdf
+deactivate PDF
+GR -> REP : asignarPdf(archivoPdf)
+GR -> REP : cambiarEstado(BORRADOR)
+deactivate GR
+
+== CU-18 Revisión en escritorio ==
+SUP -> VW : abrirReporte(idReporte)
+activate VW
+VW -> GR : obtenerReporte(idReporte)
+activate GR
+GR --> VW : reporte
+deactivate GR
+VW --> SUP : mostrarBorradorPDF()
+
+alt CU-19 Fotografía defectuosa
+    SUP -> VW : rechazarFotografia(idFoto, motivo)
+    VW -> GR : rechazarFotografia(idFoto, motivo)
+    activate GR
+    GR -> FOT : marcarRechazada(motivo)
+    GR -> REP : cambiarEstado(EN_CORRECCION)
+    GR -> JTA : notificarRecaptura(idFoto, motivo)
+    deactivate GR
+    JTA -> GR : subirFotografiaReemplazo(idFoto, imagen)
+    activate GR
+    GR -> PDF : armarReporte(...)
+    GR -> REP : versionar()
+    GR --> VW : reporteActualizado
+    deactivate GR
+end
+
+SUP -> VW : aprobarReporte(idReporte)
+VW -> GR : aprobarReporte(idReporte, idSupervisor)
+activate GR
+GR -> REP : aprobar(idSupervisor, fechaHora)
+
+== CU-20 Publicación y envío ==
+GR -> REP : obtenerDestinatarios()
+activate REP
+REP --> GR : listaCorreosClientes
+deactivate REP
+GR -> MAIL : enviar(destinatarios, asunto, archivoPdf)
+activate MAIL
+MAIL --> CLI : correo con reporte PDF
+MAIL --> GR : acuseEnvio
+deactivate MAIL
+
+alt envío exitoso
+    GR -> REP : registrarEnvio(fechaHora, destinatarios, ENVIADO)
+    GR --> VW : envioConfirmado
+else fallo de envío
+    GR -> REP : registrarEnvio(fechaHora, destinatarios, FALLIDO)
+    GR -> GR : programarReintento()
+    GR --> VW : error("Envío fallido, se reintentará")
+end
+deactivate GR
+VW --> SUP : mostrarConfirmacion()
+deactivate VW
+
+note over REP
+  Las mercancías reportadas como dañadas
+  se destacan en rojo dentro del PDF.
+end note
+
+@enduml

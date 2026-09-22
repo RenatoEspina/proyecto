@@ -1,0 +1,46 @@
+@startuml
+' Diagrama de Colaboración (Comunicación) - CU-18 / CU-20 Revisar, aprobar y enviar reporte
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam object {
+  BackgroundColor #FDF6E3
+  BorderColor #B58900
+}
+skinparam object<<actor>> {
+  BackgroundColor #E8EEF7
+  BorderColor #586E75
+}
+skinparam ArrowColor #586E75
+
+object "Supervisor de reportes" as SUP <<actor>>
+object "Jefe tarjador" as JTA <<actor>>
+object "Cliente del depósito" as CLI <<actor>>
+object ":VistaRevisionReporte" as VW
+object ":GestorReportes" as GR
+object "r:Reporte" as REP
+object "ft:Fotografia" as FOT
+object ":GeneradorPDF" as PDF
+object ":ServicioCorreo" as MAIL
+
+SUP --> VW : 1: abrirReporte(idReporte)
+VW --> GR : 2: obtenerReporte(idReporte)
+GR --> REP : 3: obtenerPdf()
+GR --> VW : 4: reporte
+SUP --> VW : 5 [foto defectuosa]: rechazarFotografia(idFoto, motivo)
+VW --> GR : 6: rechazarFotografia(idFoto, motivo)
+GR --> FOT : 7: marcarRechazada(motivo)
+GR --> JTA : 8: notificarRecaptura(idFoto, motivo)
+JTA --> GR : 9: subirFotografiaReemplazo(idFoto, imagen)
+GR --> PDF : 10: armarReporte(faena, lotes, incidencias, fotografias)
+GR --> REP : 11: versionar()
+SUP --> VW : 12: aprobarReporte(idReporte)
+VW --> GR : 13: aprobarReporte(idReporte, idSupervisor)
+GR --> REP : 14: aprobar(idSupervisor, fechaHora)
+GR --> REP : 15: obtenerDestinatarios()
+GR --> MAIL : 16: enviar(destinatarios, asunto, pdf)
+MAIL --> CLI : 17: correo con reporte PDF
+MAIL --> GR : 18: acuseEnvio
+GR --> REP : 19: registrarEnvio(fechaHora, destinatarios, estado)
+GR --> VW : 20: envioConfirmado
+
+@enduml

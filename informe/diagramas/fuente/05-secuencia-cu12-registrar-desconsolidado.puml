@@ -1,0 +1,121 @@
+@startuml
+' Diagrama de Secuencia - CU-12 Registrar desconsolidado y separación por cliente
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #586E75
+  LifeLineBorderColor #93A1A1
+  ParticipantBorderColor #B58900
+  ParticipantBackgroundColor #FDF6E3
+  ActorBorderColor #586E75
+}
+autonumber
+
+actor "Jefe tarjador" as JTA
+boundary "PantallaFaenaMovil" as PM
+control "GestorFaena" as GF
+entity "Faena" as FAE
+entity "EtapaFaena" as ETA
+entity "SelloSeguridad" as SEL
+entity "LineaCarga" as LIN
+entity "Fotografia" as FOT
+entity "Incidencia" as INC
+control "SincronizadorOffline" as SYNC
+entity "RepositorioFotos" as REP
+
+JTA -> PM : seleccionarFaena(idFaena)
+activate PM
+PM -> GF : iniciarFaena(idFaena)
+activate GF
+GF -> FAE : cambiarEstado(EN_EJECUCION)
+GF -> ETA : crear(APERTURA)
+GF --> PM : etapaApertura
+deactivate GF
+
+== Etapa 1: Apertura (CU-11) ==
+JTA -> PM : capturarFoto(puertas, candado, sello)
+PM -> GF : registrarEvidencia(etapa, imagen)
+activate GF
+GF -> FOT : crear(uuid, fechaHora, geoposicion)
+activate FOT
+FOT -> FOT : comprimir()
+FOT --> GF : fotografia
+deactivate FOT
+GF -> SYNC : encolarSubida(fotografia)
+activate SYNC
+SYNC -> REP : subir(fotografia)
+activate REP
+REP --> SYNC : urlAlmacenamiento
+deactivate REP
+SYNC --> GF : subidaConfirmada
+deactivate SYNC
+GF --> PM : evidenciaRegistrada
+deactivate GF
+
+JTA -> PM : digitarNumeroSello(nroSello)
+PM -> GF : verificarSello(nroSello)
+activate GF
+GF -> SEL : verificarContraDeclarado(nroSello)
+activate SEL
+SEL --> GF : estadoSello
+deactivate SEL
+GF --> PM : estadoSello
+deactivate GF
+
+== Etapa 2: Separación por cliente (CU-12) ==
+loop por cada lote de carga extraído
+    JTA -> PM : registrarLote(idCliente, tipoBulto, cantidadRecibida)
+    PM -> GF : registrarLote(faena, idCliente, tipoBulto, cantidadRecibida)
+    activate GF
+    GF -> LIN : contrastarCantidad(cantidadRecibida)
+    activate LIN
+    LIN --> GF : diferencia
+    deactivate LIN
+
+    alt existe diferencia o daño visible (CU-13)
+        GF -> INC : crear(tipo, cantidadAfectada, descripcion)
+        activate INC
+        INC --> GF : incidencia
+        deactivate INC
+        JTA -> PM : capturarFotosIncidencia()
+        PM -> GF : registrarEvidencia(incidencia, imagenes)
+        GF -> FOT : crear(...)
+        GF -> SYNC : encolarSubida(fotografias)
+    end
+
+    JTA -> PM : capturarFotoLote()
+    PM -> GF : registrarEvidencia(etapa, imagen)
+    GF -> SYNC : encolarSubida(fotografia)
+    GF --> PM : loteRegistrado
+    deactivate GF
+end
+
+== Etapa 3: Cierre (CU-14) ==
+JTA -> PM : capturarFotoContenedorVacio()
+PM -> GF : cerrarFaena(idFaena, imagenCierre)
+activate GF
+GF -> ETA : crear(CIERRE)
+GF -> FOT : crear(...)
+GF -> SYNC : sincronizarPendientes()
+activate SYNC
+SYNC -> REP : subir(pendientes)
+SYNC --> GF : sincronizacionCompleta
+deactivate SYNC
+GF -> FAE : cambiarEstado(FINALIZADA)
+GF --> PM : faenaCerrada()
+deactivate GF
+PM --> JTA : confirmarCierre()
+deactivate PM
+
+note over GF, SYNC
+  Modo offline: si no hay conectividad, SincronizadorOffline
+  persiste en la base de datos local del dispositivo y
+  reintenta la subida foto a foto al recuperar señal.
+end note
+
+note over FAE
+  Al cerrar la faena se dispara
+  automáticamente CU-17 (Generar reporte PDF)
+end note
+
+@enduml
