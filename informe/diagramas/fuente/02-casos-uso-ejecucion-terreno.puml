@@ -1,0 +1,58 @@
+@startuml
+' Casos de Uso expandidos - Subsistema de Ejecución en Terreno (App móvil)
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FDF6E3
+  BorderColor #B58900
+  ArrowColor #586E75
+}
+
+actor "Jefe tarjador" as JTA
+actor "Cuadrilla" as CUA
+actor "Jefe de faena" as JFA
+actor "Repositorio de\nfotografías (nube)" as REP <<sistema externo>>
+
+rectangle "BeeTracer - Módulo Ejecutar Operaciones (App móvil Ionic)" {
+  usecase "CU-10 Consultar\nprogramación asignada" as CU10
+  usecase "CU-11 Registrar apertura\nde contenedor" as CU11
+  usecase "CU-11.1 Verificar sello\nde seguridad" as CU111
+  usecase "CU-11.2 Digitar número\nde sello" as CU112
+  usecase "CU-12 Registrar desconsolidado\ny separación por cliente" as CU12
+  usecase "CU-12.1 Registrar lote\npor cliente" as CU121
+  usecase "CU-12.2 Contrastar cantidad\ndeclarada vs. recibida" as CU122
+  usecase "CU-13 Registrar incidencia\n(daño / faltante / sobrante)" as CU13
+  usecase "CU-14 Registrar cierre de faena\n(contenedor vacío)" as CU14
+  usecase "CU-15 Capturar y subir\nevidencia fotográfica" as CU15
+  usecase "CU-15.1 Comprimir imagen" as CU151
+  usecase "CU-16 Encolar y sincronizar\nen modo offline" as CU16
+  usecase "CU-07 Registrar carga en\nmodalidad tarja ciega" as CU07
+}
+
+JTA --> CU10
+JTA --> CU11
+JTA --> CU12
+JTA --> CU13
+JTA --> CU14
+JTA --> CU07
+CUA --> CU12
+JFA --> CU10
+
+CU11 ..> CU111 : <<include>>
+CU111 ..> CU112 : <<include>>
+CU11 ..> CU15 : <<include>>
+CU12 ..> CU121 : <<include>>
+CU12 ..> CU122 : <<include>>
+CU12 ..> CU15 : <<include>>
+CU13 ..> CU15 : <<include>>
+CU14 ..> CU15 : <<include>>
+CU13 ..> CU12 : <<extend>>
+CU07 ..> CU12 : <<extend>>
+CU15 ..> CU151 : <<include>>
+CU15 ..> CU16 : <<extend>>
+CU15 --> REP
+CU16 --> REP
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml
+' Diagrama de Secuencia - CU-05 Importar manifiesto electrónico (XML)
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #586E75
+  LifeLineBorderColor #93A1A1
+  ParticipantBorderColor #B58900
+  ParticipantBackgroundColor #FDF6E3
+  ActorBorderColor #586E75
+}
+autonumber
+
+actor "Jefe de faena" as JFA
+boundary "VistaImportarManifiesto" as VW
+control "GestorManifiesto" as GM
+entity "ServicioAduanaWS" as WS
+entity "Manifiesto" as MAN
+entity "Contenedor" as CON
+entity "LineaCarga" as LIN
+database "BaseDatos" as BD
+
+JFA -> VW : solicitarImportacion(nave, viaje, fecha)
+activate VW
+VW -> GM : importarManifiesto(nave, viaje, fecha)
+activate GM
+GM -> WS : descargarXML(nave, viaje, fecha)
+activate WS
+WS --> GM : xmlManifiesto
+deactivate WS
+
+alt XML recibido correctamente
+    GM -> GM : validarEsquema(xmlManifiesto)
+    GM -> MAN : crear(numeroManifiesto, nave, viaje)
+    activate MAN
+    MAN --> GM : manifiesto
+    deactivate MAN
+
+    loop por cada contenedor del manifiesto
+        GM -> CON : crear(sigla, numero, tipo, nroSelloDeclarado)
+        activate CON
+        CON --> GM : contenedor
+        deactivate CON
+        GM -> MAN : agregarContenedor(contenedor)
+
+        loop por cada línea de carga del contenedor
+            GM -> LIN : crear(bl, cliente, cantidad, descripcion, tipoBulto)
+            activate LIN
+            LIN --> GM : lineaCarga
+            deactivate LIN
+            GM -> CON : agregarLinea(lineaCarga)
+        end
+    end
+
+    GM -> BD : persistir(manifiesto)
+    activate BD
+    BD --> GM : ok
+    deactivate BD
+    GM --> VW : resumenImportacion(nContenedores, nLineas)
+else XML no disponible o inválido
+    GM --> VW : error("Manifiesto no disponible en Aduana")
+    note right of VW
+      El Jefe de faena puede continuar
+      con integración API (CU-06) o
+      declarar tarja ciega (CU-07)
+    end note
+end
+deactivate GM
+VW --> JFA : mostrarResultado()
+deactivate VW
+
+@enduml

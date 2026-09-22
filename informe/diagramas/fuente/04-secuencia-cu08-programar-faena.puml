@@ -1,0 +1,78 @@
+@startuml
+' Diagrama de Secuencia - CU-08 Programar faena de desconsolidado
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #586E75
+  LifeLineBorderColor #93A1A1
+  ParticipantBorderColor #B58900
+  ParticipantBackgroundColor #FDF6E3
+  ActorBorderColor #586E75
+}
+autonumber
+
+actor "Jefe de faena" as JFA
+boundary "VistaProgramacion" as VW
+control "GestorProgramacion" as GP
+entity "Contenedor" as CON
+entity "Faena" as FAE
+entity "Cuadrilla" as CUA
+entity "Trabajador" as TRA
+database "BaseDatos" as BD
+
+JFA -> VW : abrirProgramacion()
+activate VW
+VW -> GP : listarContenedoresPendientes()
+activate GP
+GP -> CON : buscarSinFaena()
+activate CON
+CON --> GP : listaContenedores
+deactivate CON
+GP --> VW : listaContenedores
+deactivate GP
+VW --> JFA : mostrarContenedoresPorArribar()
+
+JFA -> VW : seleccionarContenedor(idContenedor)
+JFA -> VW : definirHorario(fecha, horaInicio, horaTermino)
+VW -> GP : programarFaena(idContenedor, fecha, horaInicio, horaTermino)
+activate GP
+GP -> GP : validarDisponibilidadHorario()
+
+alt horario disponible
+    GP -> FAE : crear(contenedor, fecha, horaInicio, horaTermino)
+    activate FAE
+    FAE --> GP : faena
+    deactivate FAE
+    GP -> CUA : buscarDisponibles(fecha, horaInicio)
+    activate CUA
+    CUA --> GP : cuadrillasDisponibles
+    deactivate CUA
+    GP --> VW : cuadrillasDisponibles
+    VW --> JFA : mostrarCuadrillas()
+
+    JFA -> VW : asignarCuadrilla(idCuadrilla, idJefeTarjador)
+    VW -> GP : asignarCuadrilla(faena, idCuadrilla, idJefeTarjador)
+    GP -> TRA : validarHabilitado(idJefeTarjador)
+    activate TRA
+    TRA --> GP : habilitado
+    deactivate TRA
+    GP -> FAE : asignarCuadrilla(cuadrilla, jefeTarjador)
+    GP -> FAE : cambiarEstado(PROGRAMADA)
+    GP -> BD : persistir(faena)
+    activate BD
+    BD --> GP : ok
+    deactivate BD
+    GP --> VW : faenaProgramada
+else horario ocupado o cuadrilla no disponible
+    GP --> VW : error("Conflicto de agenda")
+end
+deactivate GP
+VW --> JFA : confirmarProgramacion()
+deactivate VW
+
+note over FAE
+  La faena queda visible en la app móvil
+  del Jefe tarjador asignado (CU-10)
+end note
+
+@enduml

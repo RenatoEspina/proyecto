@@ -1,0 +1,390 @@
+@startuml
+' Diagrama de Clases de Diseño - BeeTracer
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FDF6E3
+  BorderColor #B58900
+  ArrowColor #586E75
+}
+hide empty members
+
+package "Seguridad y maestros" #F5F5F0 {
+
+  class Deposito {
+    - idDeposito : int
+    - rut : String
+    - razonSocial : String
+    - direccion : String
+    - zonaHoraria : String
+    + obtenerParametros() : Parametro[]
+  }
+
+  class Usuario {
+    - idUsuario : int
+    - nombre : String
+    - email : String
+    - passwordHash : String
+    - activo : boolean
+    - ultimoAcceso : DateTime
+    + autenticar(pass : String) : boolean
+    + tienePermiso(codigo : String) : boolean
+    + cambiarPassword(nueva : String) : void
+  }
+
+  class Rol {
+    - idRol : int
+    - nombre : String
+    - descripcion : String
+    + agregarPermiso(p : Permiso) : void
+  }
+
+  class Permiso {
+    - idPermiso : int
+    - codigo : String
+    - descripcion : String
+  }
+
+  class Cliente {
+    - idCliente : int
+    - rut : String
+    - razonSocial : String
+    - emailContacto : String
+    - telefono : String
+    - activo : boolean
+    + obtenerDestinatarios() : String[]
+  }
+
+  class Trabajador {
+    - idTrabajador : int
+    - rut : String
+    - nombre : String
+    - cargo : String
+    - habilitado : boolean
+    + estaDisponible(f : Date, h : Time) : boolean
+  }
+
+  class Cuadrilla {
+    - idCuadrilla : int
+    - nombre : String
+    - turno : String
+    + agregarTrabajador(t : Trabajador) : void
+    + obtenerJefeTarjador() : Trabajador
+    + estaDisponible(f : Date, h : Time) : boolean
+  }
+
+  class TipoBulto {
+    - idTipoBulto : int
+    - nombre : String
+    - descripcion : String
+    - unidadMedida : String
+  }
+}
+
+package "Información de carga" #F5F5F0 {
+
+  class Manifiesto {
+    - idManifiesto : int
+    - numeroManifiesto : String
+    - nave : String
+    - viaje : String
+    - fechaRecepcion : DateTime
+    - origenDatos : OrigenDatos
+    + cargarDesdeXML(xml : String) : boolean
+    + validarEsquema() : boolean
+    + agregarContenedor(c : Contenedor) : void
+  }
+
+  class Contenedor {
+    - idContenedor : int
+    - sigla : String
+    - numero : String
+    - tipo : String
+    - tamano : String
+    - nroSelloDeclarado : String
+    - fechaArribo : Date
+    + agregarLinea(l : LineaCarga) : void
+    + totalBultosDeclarados() : int
+  }
+
+  class LineaCarga {
+    - idLinea : int
+    - blConocimiento : String
+    - descripcion : String
+    - marcas : String
+    - cantidadDeclarada : int
+    - cantidadRecibida : int
+    - pesoKg : decimal
+    + contrastarCantidad(recibida : int) : int
+    + tieneDiferencia() : boolean
+  }
+
+  enum OrigenDatos {
+    MANIFIESTO_XML
+    INTEGRACION_API
+    TARJA_CIEGA
+  }
+}
+
+package "Operación en terreno" #F5F5F0 {
+
+  class Faena {
+    - idFaena : int
+    - folio : String
+    - fechaProgramada : Date
+    - horaInicio : Time
+    - horaTermino : Time
+    - estado : EstadoFaena
+    - modalidadIngreso : OrigenDatos
+    + programar(f : Date, hi : Time, ht : Time) : void
+    + asignarCuadrilla(c : Cuadrilla, jt : Trabajador) : void
+    + iniciar() : void
+    + registrarEtapa(tipo : TipoEtapa) : EtapaFaena
+    + cerrar() : void
+    + cambiarEstado(e : EstadoFaena) : void
+  }
+
+  class EtapaFaena {
+    - idEtapa : int
+    - tipo : TipoEtapa
+    - fechaHoraInicio : DateTime
+    - fechaHoraFin : DateTime
+    - observacion : String
+    + agregarEvidencia(f : Fotografia) : void
+    + estaCompleta() : boolean
+  }
+
+  class SelloSeguridad {
+    - idSello : int
+    - numeroDigitado : String
+    - estado : EstadoSello
+    - fechaVerificacion : DateTime
+    + verificarContraDeclarado(dec : String) : EstadoSello
+  }
+
+  class Fotografia {
+    - idFoto : int
+    - uuid : String
+    - nombreArchivo : String
+    - url : String
+    - fechaHoraCaptura : DateTime
+    - latitud : decimal
+    - longitud : decimal
+    - tamanoBytes : long
+    - hash : String
+    - estado : EstadoFoto
+    - motivoRechazo : String
+    + comprimir() : void
+    + subir() : boolean
+    + marcarSubida(url : String) : void
+    + marcarRechazada(motivo : String) : void
+  }
+
+  class Incidencia {
+    - idIncidencia : int
+    - tipo : TipoIncidencia
+    - descripcion : String
+    - cantidadAfectada : int
+    - gravedad : String
+    - fechaHora : DateTime
+    + adjuntarFotografia(f : Fotografia) : void
+  }
+
+  enum EstadoFaena {
+    PROGRAMADA
+    EN_EJECUCION
+    FINALIZADA
+    ANULADA
+  }
+
+  enum TipoEtapa {
+    APERTURA
+    SEPARACION
+    INCIDENCIA
+    CIERRE
+  }
+
+  enum EstadoSello {
+    INTACTO
+    ROTO
+    NO_COINCIDE
+  }
+
+  enum EstadoFoto {
+    PENDIENTE
+    SUBIDA
+    RECHAZADA
+    REEMPLAZADA
+  }
+
+  enum TipoIncidencia {
+    DANO
+    FALTANTE
+    SOBRANTE
+    MAL_EMBALADO
+  }
+}
+
+package "Reportes y publicación" #F5F5F0 {
+
+  class Reporte {
+    - idReporte : int
+    - folio : String
+    - version : int
+    - fechaGeneracion : DateTime
+    - fechaAprobacion : DateTime
+    - estado : EstadoReporte
+    - urlPdf : String
+    + generarPDF() : Archivo
+    + versionar() : void
+    + aprobar(s : Usuario, fh : DateTime) : void
+    + obtenerDestinatarios() : String[]
+    + registrarEnvio(e : EnvioReporte) : void
+  }
+
+  class EnvioReporte {
+    - idEnvio : int
+    - fechaHoraEnvio : DateTime
+    - destinatarios : String
+    - estadoEnvio : String
+    - mensajeError : String
+    - intentos : int
+    + reintentar() : boolean
+  }
+
+  enum EstadoReporte {
+    BORRADOR
+    EN_CORRECCION
+    APROBADO
+    ENVIADO
+  }
+}
+
+package "Controladores y servicios" #EFEFE8 {
+
+  class GestorManifiesto <<control>> {
+    + importarManifiesto(nave, viaje, fecha) : Manifiesto
+    + recibirDesdeAPI(payload : JSON) : Manifiesto
+    + declararTarjaCiega(idContenedor : int) : Contenedor
+  }
+
+  class GestorProgramacion <<control>> {
+    + listarContenedoresPendientes() : Contenedor[]
+    + programarFaena(idCont, f, hi, ht) : Faena
+    + asignarCuadrilla(faena, idCuad, idJefe) : void
+    + validarDisponibilidadHorario(f, hi, ht) : boolean
+  }
+
+  class GestorFaena <<control>> {
+    + iniciarFaena(idFaena : int) : EtapaFaena
+    + verificarSello(nro : String) : EstadoSello
+    + registrarLote(f, idCliente, tipo, cant) : LineaCarga
+    + registrarIncidencia(f, tipo, cant, desc) : Incidencia
+    + registrarEvidencia(etapa, imagen) : Fotografia
+    + cerrarFaena(idFaena : int) : void
+  }
+
+  class GestorReportes <<control>> {
+    + generarBorrador(idFaena : int) : Reporte
+    + obtenerReporte(idReporte : int) : Reporte
+    + rechazarFotografia(idFoto, motivo) : void
+    + aprobarReporte(idReporte, idSupervisor) : void
+    + enviarReporte(idReporte : int) : EnvioReporte
+  }
+
+  class SincronizadorOffline <<control>> {
+    - colaPendientes : Fotografia[]
+    + encolarSubida(f : Fotografia) : void
+    + hayConectividad() : boolean
+    + sincronizarPendientes() : int
+    + persistirLocal(f : Fotografia) : void
+  }
+
+  interface IServicioAduana <<interface>> {
+    + descargarXML(nave, viaje, fecha) : String
+  }
+
+  class ServicioAduanaWS {
+    - urlWebService : String
+    - certificado : String
+    + descargarXML(nave, viaje, fecha) : String
+  }
+
+  interface IPasarelaCorreo <<interface>> {
+    + enviar(dest : String[], asunto, adjunto) : boolean
+  }
+
+  class ServicioCorreoSMTP {
+    - host : String
+    - puerto : int
+    + enviar(dest : String[], asunto, adjunto) : boolean
+  }
+
+  class GeneradorPDF <<service>> {
+    - plantilla : String
+    + armarReporte(f : Faena, lotes, incidencias, fotos) : Archivo
+    + destacarIncidencias() : void
+  }
+
+  class RepositorioFotos <<service>> {
+    - bucket : String
+    + subir(f : Fotografia) : String
+    + obtenerURL(uuid : String) : String
+    + eliminar(uuid : String) : boolean
+  }
+}
+
+' ---------- Relaciones estructurales ----------
+Deposito "1" -- "0..*" Usuario : emplea >
+Deposito "1" -- "0..*" Cliente : atiende >
+Deposito "1" -- "0..*" Trabajador : contrata >
+Usuario "0..*" -- "1..*" Rol : posee >
+Rol "1..*" -- "0..*" Permiso : otorga >
+Cuadrilla "1" o-- "2..*" Trabajador : integrada por >
+
+Manifiesto "1" *-- "1..*" Contenedor : declara >
+Contenedor "1" *-- "0..*" LineaCarga : contiene >
+LineaCarga "0..*" -- "1" Cliente : consignada a >
+LineaCarga "0..*" -- "1" TipoBulto : clasificada como >
+Manifiesto -- OrigenDatos
+
+Faena "1" -- "1" Contenedor : desconsolida >
+Faena "0..*" -- "0..1" Cuadrilla : ejecutada por >
+Faena "0..*" -- "1" Usuario : programada por >
+Faena "1" *-- "1..*" EtapaFaena : compuesta por >
+Faena "1" -- "0..1" SelloSeguridad : verifica >
+Faena "1" -- "0..*" Incidencia : registra >
+EtapaFaena "1" *-- "0..*" Fotografia : evidencia >
+Incidencia "1" -- "1..*" Fotografia : respaldada por >
+Incidencia "0..*" -- "0..1" LineaCarga : afecta >
+Faena -- EstadoFaena
+EtapaFaena -- TipoEtapa
+SelloSeguridad -- EstadoSello
+Fotografia -- EstadoFoto
+Incidencia -- TipoIncidencia
+
+Faena "1" -- "0..1" Reporte : documenta >
+Reporte "1" -- "0..*" EnvioReporte : publicada mediante >
+Reporte "0..*" -- "0..1" Usuario : aprobada por >
+Reporte -- EstadoReporte
+
+' ---------- Dependencias de diseño ----------
+GestorManifiesto ..> Manifiesto
+GestorManifiesto ..> IServicioAduana
+IServicioAduana <|.. ServicioAduanaWS
+GestorProgramacion ..> Faena
+GestorProgramacion ..> Cuadrilla
+GestorFaena ..> Faena
+GestorFaena ..> EtapaFaena
+GestorFaena ..> Incidencia
+GestorFaena ..> Fotografia
+GestorFaena ..> SincronizadorOffline
+SincronizadorOffline ..> RepositorioFotos
+GestorReportes ..> Reporte
+GestorReportes ..> GeneradorPDF
+GestorReportes ..> IPasarelaCorreo
+IPasarelaCorreo <|.. ServicioCorreoSMTP
+GestorReportes ..> Fotografia
+
+@enduml
